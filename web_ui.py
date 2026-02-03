@@ -7,176 +7,170 @@ from streamlit_lottie import st_lottie
 
 from scanner import PortScanner, ScanType, OutputFormatter, parse_ports
 
-# ---------------- Page Configuration ----------------
+# ---------------- PAGE CONFIG ----------------
 st.set_page_config(
     page_title="Port Scanning using NumPy",
-    page_icon="🌐",
+    page_icon="🛡️",
     layout="wide"
 )
 
-# ---------------- Load Lottie Animation ----------------
+# ---------------- FORCE HACKER THEME ----------------
+st.markdown("""
+<style>
+/* Main background */
+.stApp {
+    background-color: #020617;
+    color: #00ff9c;
+}
+
+/* Titles */
+h1, h2, h3, h4 {
+    color: #00ff9c !important;
+    text-shadow: 0 0 10px #00ff9c;
+}
+
+/* Input boxes */
+input, textarea {
+    background-color: #020617 !important;
+    color: #00ff9c !important;
+    border: 1px solid #00ff9c !important;
+}
+
+/* Buttons */
+button {
+    background-color: #000000 !important;
+    color: #00ff9c !important;
+    border: 1px solid #00ff9c !important;
+}
+
+/* Dataframe */
+[data-testid="stDataFrame"] {
+    background-color: #020617;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# ---------------- LOAD LOTTIE ----------------
 def load_lottie_url(url):
-    r = requests.get(url)
-    if r.status_code != 200:
-        return None
-    return r.json()
+    try:
+        r = requests.get(url, timeout=5)
+        if r.status_code == 200:
+            return r.json()
+    except:
+        pass
+    return None
 
 lottie_scan = load_lottie_url(
     "https://assets2.lottiefiles.com/packages/lf20_jcikwtux.json"
 )
 
-# ---------------- Title ----------------
-st.title("🌐 Port Scanning Tool")
-st.markdown("### Web-based Port Scanner using Python & NumPy")
-
-# ---------------- Ethical Warning ----------------
-st.warning(
-    "⚠️ Educational Use Only. Scan only systems you own or have permission to test."
-)
-
-# ---------------- Auto Detect Device IP ----------------
-def get_device_ip():
+# ---------------- IP DETECTION ----------------
+def get_local_ip():
     try:
-        return socket.gethostbyname(socket.gethostname())
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
     except:
         return "Not detected"
 
-device_ip = get_device_ip()
-st.success(f"💻 Your Device IP Address: {device_ip}")
+def get_public_ip():
+    try:
+        return requests.get("https://api.ipify.org").text
+    except:
+        return "Not detected"
 
-# ---------------- Input Section ----------------
+local_ip = get_local_ip()
+public_ip = get_public_ip()
+
+# ---------------- TITLE ----------------
+st.title("🛡️ PORT SCANNING TOOL")
+st.markdown("### ⚡ Ethical Hacker Style | Python + NumPy")
+
+# ---------------- WARNING ----------------
+st.warning("⚠️ Educational Use Only. Scan systems you own or have permission to test.")
+
+# ---------------- SHOW IPs ----------------
+col1, col2 = st.columns(2)
+col1.success(f"💻 Local IP Address: **{local_ip}**")
+col2.success(f"🌍 Public IP Address: **{public_ip}**")
+
+# ---------------- INPUT SECTION ----------------
 st.header("🔧 Scan Configuration")
 
-target = st.text_input(
-    "Target IP / Hostname",
-    value=device_ip
-)
+target = st.text_input("Target IP / Hostname", value=local_ip)
 
 ports_input = st.text_input(
-    "Ports (Example: 80,443 or 20-25 or common)",
+    "Ports (80,443 | 20-25 | common)",
     value="common"
 )
 
 scan_type_ui = st.selectbox(
-    "Select Scan Type",
+    "Scan Type",
     ["TCP Connect Scan", "UDP Scan"]
 )
 
-# ---------------- Start Scan Button ----------------
-if st.button("🚀 Start Scan"):
-    if target.strip() == "":
-        st.error("Target IP / Hostname is required")
+# ---------------- SCAN BUTTON ----------------
+if st.button("🚀 START SCAN"):
+    if not target.strip():
+        st.error("Target IP is required")
     else:
         scanner = PortScanner()
+        scan_mode = ScanType.TCP_CONNECT if scan_type_ui == "TCP Connect Scan" else ScanType.UDP
 
-        # Scan type mapping
-        if scan_type_ui == "TCP Connect Scan":
-            scan_mode = ScanType.TCP_CONNECT
-        else:
-            scan_mode = ScanType.UDP
+        ports = "common" if ports_input.lower() == "common" else parse_ports(ports_input, False, False)
 
-        # Ports handling
-        if ports_input.lower() == "common":
-            ports = "common"
-        else:
-            ports = parse_ports(ports_input, False, False)
-
-        # ---------------- Animation + Progress ----------------
-        st.info("🔍 Scanning in progress...")
-        st_lottie(lottie_scan, height=200)
+        st.info("🔍 Scanning target...")
+        if lottie_scan:
+            st_lottie(lottie_scan, height=200)
 
         progress = st.progress(0)
-        status = st.empty()
-
         for i in range(100):
             time.sleep(0.02)
             progress.progress(i + 1)
-            status.text(f"Scanning... {i + 1}%")
 
-        # ---------------- Perform Scan ----------------
-        results = scanner.scan_multiple_hosts(
-            [target],
-            ports,
-            scan_mode
-        )
+        results = scanner.scan_multiple_hosts([target], ports, scan_mode)
 
-        status.text("Scan Completed ✅")
-        st.success("Scan Completed Successfully")
+        st.success("✅ Scan Completed")
         st.balloons()
 
-        # ---------------- Fade-in Animation ----------------
-        st.markdown("""
-        <style>
-        .fade-in {
-            animation: fadeIn 1.5s;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-        </style>
-        """, unsafe_allow_html=True)
-
-        st.markdown('<div class="fade-in">', unsafe_allow_html=True)
-
-        # ---------------- Scan Summary ----------------
-        open_ports = 0
-        for host in results:
-            for port in host.ports:
-                if port.is_open:
-                    open_ports += 1
+        # ---------------- SUMMARY ----------------
+        open_ports = sum(port.is_open for host in results for port in host.ports)
 
         st.subheader("📊 Scan Summary")
-        col1, col2 = st.columns(2)
-        col1.metric("Target", target)
-        col2.metric("Open Ports Found", open_ports)
+        c1, c2 = st.columns(2)
+        c1.metric("Target", target)
+        c2.metric("Open Ports", open_ports)
 
-        # ---------------- Result Table ----------------
-        table_data = []
-
+        # ---------------- TABLE ----------------
+        table = []
         for host in results:
             for port in host.ports:
-                table_data.append({
-                    "IP Address": host.ip,
+                table.append({
+                    "IP": host.ip,
                     "Port": port.port,
                     "Status": "OPEN 🟢" if port.is_open else "CLOSED 🔴",
                     "Service": port.service or "Unknown"
                 })
 
-        if table_data:
-            df = pd.DataFrame(table_data)
+        if table:
+            df = pd.DataFrame(table)
             st.subheader("📋 Port Scan Results")
             st.dataframe(df, use_container_width=True)
-        else:
-            st.warning("No open ports found")
 
-        # ---------------- Text Output ----------------
-        st.subheader("📝 Detailed Scan Output")
-        output_text = OutputFormatter.text(results, verbose=True)
-        st.text_area("Output", output_text, height=300)
+        # ---------------- TEXT OUTPUT ----------------
+        st.subheader("🧾 Detailed Output")
+        st.text_area(
+            "Scan Log",
+            OutputFormatter.text(results, verbose=True),
+            height=300
+        )
 
-        st.markdown('</div>', unsafe_allow_html=True)
-
-# ---------------- Footer ----------------
-st.markdown(
-    """
-    <style>
-    .footer {
-        position: fixed;
-        left: 0;
-        bottom: 0;
-        width: 100%;
-        background-color: #0e1117;
-        color: white;
-        text-align: center;
-        padding: 8px;
-        font-size: 14px;
-    }
-    </style>
-
-    <div class="footer">
-        Semester Project: Port Scanning using NumPy
-    </div>
-    """,
-    unsafe_allow_html=True
-)
+# ---------------- FOOTER ----------------
+st.markdown("""
+<hr style="border:1px solid #00ff9c">
+<center>
+🛡️ Semester Project | Port Scanning using NumPy | Ethical Hacking
+</center>
+""", unsafe_allow_html=True)
