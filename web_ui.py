@@ -86,10 +86,10 @@ public_ip = get_public_ip()
 
 # ---------------- TITLE ----------------
 st.title("🛡️ PORT SCANNING TOOL")
-st.markdown("### ⚡ Ethical Hacker Style | Python + NumPy")
+st.markdown("#⚡using| Python + NumPy ⚡|")
 
 # ---------------- WARNING ----------------
-st.warning("⚠️ Educational Use Only. Scan systems you own or have permission to test.")
+st.warning("⚠️ FOR EDUCATIONAL USE")
 
 # ---------------- SHOW IPs ----------------
 col1, col2 = st.columns(2)
