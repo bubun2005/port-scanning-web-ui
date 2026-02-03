@@ -174,3 +174,47 @@ st.markdown("""
 🛡️ Semester Project | Port Scanning using NumPy | Ethical Hacking
 </center>
 """, unsafe_allow_html=True)
+
+import socket
+import requests
+import streamlit as st
+
+# ---------------- ACCURATE LOCAL IP ----------------
+@st.cache_data(show_spinner=False)
+def get_local_ip():
+    try:
+        hostname = socket.gethostname()
+        local_ips = socket.gethostbyname_ex(hostname)[2]
+
+        # Filter valid IPv4 addresses
+        for ip in local_ips:
+            if ip.startswith(("192.", "10.", "172.")):
+                return ip
+        return local_ips[0] if local_ips else "Not detected"
+
+    except Exception as e:
+        return "Not detected"
+
+# ---------------- ACCURATE PUBLIC IP ----------------
+@st.cache_data(show_spinner=False)
+def get_public_ip():
+    services = [
+        "https://api.ipify.org",
+        "https://ifconfig.me/ip",
+        "https://checkip.amazonaws.com"
+    ]
+
+    for service in services:
+        try:
+            ip = requests.get(service, timeout=3).text.strip()
+            if ip:
+                return ip
+        except:
+            continue
+
+    return "Not detected"
+
+local_ip = get_local_ip()
+public_ip = get_public_ip()
+
+st.info("🌐 Network Status: Online" if public_ip != "Not detected" else "🌐 Network Status: Offline")
